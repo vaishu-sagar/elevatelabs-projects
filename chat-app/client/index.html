@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Neon Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-purple-900 via-black to-blue-900 flex items-center justify-center h-screen">
+
+<div class="w-full max-w-md backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-5">
+
+  <h2 class="text-center text-2xl font-bold text-white mb-4">💬 Neon Chat</h2>
+
+  <input id="username" placeholder="Enter username"
+    class="w-full p-2 mb-3 rounded bg-white/20 text-white placeholder-gray-300"/>
+
+  <button onclick="joinChat()"
+    class="w-full bg-purple-600 hover:bg-purple-700 text-white p-2 rounded mb-3">
+    Join Chat
+  </button>
+
+  <div id="chat" class="hidden">
+
+    <div id="messages" class="h-72 overflow-y-auto space-y-2 mb-3 p-2 rounded bg-black/30"></div>
+
+    <input id="message" placeholder="Type message..."
+      class="w-full p-2 rounded bg-white/20 text-white"/>
+
+    <button onclick="sendMessage()"
+      class="w-full bg-green-500 hover:bg-green-600 mt-2 p-2 rounded text-white">
+      Send
+    </button>
+
+    <p id="typing" class="text-gray-300 text-sm mt-1"></p>
+
+  </div>
+
+</div>
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+<script>
+const socket = io("http://localhost:5000");
+let username = "";
+let myId = "";
+
+socket.on("connect", () => {
+  myId = socket.id;
+});
+
+function joinChat() {
+  username = document.getElementById("username").value;
+
+  if (!username) {
+    alert("Enter username!");
+    return;
+  }
+
+  socket.emit("join", username);
+  document.getElementById("chat").classList.remove("hidden");
+}
+
+function sendMessage() {
+  const msg = document.getElementById("message").value;
+  if (!msg) return;
+
+  socket.emit("sendMessage", msg);
+  document.getElementById("message").value = "";
+}
+
+document.getElementById("message").addEventListener("input", () => {
+  socket.emit("typing");
+});
+
+socket.on("message", (data) => {
+  const div = document.createElement("div");
+
+  if (data.type === "system") {
+    div.innerHTML = `<div class="text-center text-gray-400 text-sm">${data.text}</div>`;
+  } else {
+    const isMe = data.id === myId;
+
+    div.innerHTML = `
+      <div class="flex ${isMe ? "justify-end" : "justify-start"}">
+        <div class="${isMe ? "bg-green-500" : "bg-purple-600"} text-white p-2 rounded-lg max-w-xs shadow-lg">
+          <div>${data.text}</div>
+          <div class="text-xs text-right opacity-70">${data.time}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const messages = document.getElementById("messages");
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+});
+
+socket.on("typing", (user) => {
+  document.getElementById("typing").innerText = `${user} typing...`;
+  setTimeout(() => {
+    document.getElementById("typing").innerText = "";
+  }, 1000);
+});
+</script>
+
+</body>
+</html>
